@@ -13,6 +13,7 @@ import {
 /** @typedef {import('@endo/pass-style').Passable} Passable */
 /** @typedef {import('@endo/pass-style').RemotableObject} Remotable */
 /** @template T @typedef {import('@endo/pass-style').CopyRecord<T>} CopyRecord */
+/** @typedef {import('@endo/pass-style').CopyBytes} CopyBytes */
 /** @typedef {import('./types.js').RankCover} RankCover */
 
 const { quote: q, Fail } = assert;
@@ -267,6 +268,18 @@ const decodeArray = (encoded, decodePassable) => {
   return harden(elements);
 };
 
+/**
+ * @param {CopyBytes} copyBytes
+ * @param {(copyBytes: CopyBytes) => string} _encodePassable
+ * @returns {string}
+ */
+const encodeCopyBytes = (copyBytes, _encodePassable) => {
+  // TODO implement
+  throw Fail`encodePassable(copyData) not yet implemented: ${copyBytes}`;
+  // eslint-disable-next-line no-unreachable
+  return ''; // Just for the type
+};
+
 const encodeRecord = (record, encodePassable) => {
   const names = recordNames(record);
   const values = recordValues(record, names);
@@ -377,6 +390,9 @@ export const makeEncodePassable = (encodeOptions = {}) => {
       }
       case 'copyArray': {
         return encodeArray(passable, encodePassable);
+      }
+      case 'copyBytes': {
+        return encodeCopyBytes(passable, encodePassable);
       }
       case 'copyRecord': {
         return encodeRecord(passable, encodePassable);
@@ -497,6 +513,7 @@ export const passStylePrefixes = {
   tagged: ':',
   promise: '?',
   copyArray: '[',
+  // copyBytes: TODO
   boolean: 'b',
   number: 'f',
   bigint: 'np',

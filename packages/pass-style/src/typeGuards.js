@@ -2,6 +2,7 @@ import { passStyleOf } from './passStyleOf.js';
 
 /** @typedef {import('./types.js').Passable} Passable */
 /** @template T @typedef {import('./types.js').CopyArray<T>} CopyArray */
+/** @typedef {import('./types.js').CopyBytes} CopyBytes */
 /** @template T @typedef {import('./types.js').CopyRecord<T>} CopyRecord */
 /** @typedef {import('./types.js').RemotableObject} Remotable */
 
@@ -16,6 +17,16 @@ const { Fail, quote: q } = assert;
  */
 const isCopyArray = arr => passStyleOf(arr) === 'copyArray';
 harden(isCopyArray);
+
+/**
+ * Check whether the argument is a pass-by-copy binary data, AKA a "copyBytes"
+ * in @endo/marshal terms
+ *
+ * @param {Passable} arr
+ * @returns {arr is CopyBytes}
+ */
+const isCopyBytes = arr => passStyleOf(arr) === 'copyBytes';
+harden(isCopyBytes);
 
 /**
  * Check whether the argument is a pass-by-copy record, AKA a
@@ -52,6 +63,23 @@ const assertCopyArray = (array, optNameOfArray = 'Alleged array') => {
     )}`;
 };
 harden(assertCopyArray);
+
+/**
+ * @callback AssertCopyBytes
+ * @param {Passable} array
+ * @param {string=} optNameOfArray
+ * @returns {asserts array is CopyBytes}
+ */
+
+/** @type {AssertCopyBytes} */
+const assertCopyBytes = (array, optNameOfArray = 'Alleged copyBytes') => {
+  const passStyle = passStyleOf(array);
+  passStyle === 'copyBytes' ||
+    Fail`${q(
+      optNameOfArray,
+    )} ${array} must be a pass-by-copy binary data, not ${q(passStyle)}`;
+};
+harden(assertCopyBytes);
 
 /**
  * @callback AssertRecord
@@ -93,8 +121,10 @@ harden(assertRemotable);
 export {
   assertRecord,
   assertCopyArray,
+  assertCopyBytes,
   assertRemotable,
   isRemotable,
   isRecord,
   isCopyArray,
+  isCopyBytes,
 };

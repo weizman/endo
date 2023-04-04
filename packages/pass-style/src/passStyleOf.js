@@ -4,6 +4,7 @@ import { isPromise } from '@endo/promise-kit';
 import { isObject, isTypedArray, PASS_STYLE } from './passStyle-helpers.js';
 
 import { CopyArrayHelper } from './copyArray.js';
+import { CopyBytesHelper } from './copyBytes.js';
 import { CopyRecordHelper } from './copyRecord.js';
 import { TaggedHelper } from './tagged.js';
 import { ErrorHelper } from './error.js';
@@ -34,6 +35,7 @@ const makeHelperTable = passStyleHelpers => {
   const HelperTable = {
     __proto__: null,
     copyArray: undefined,
+    copyBytes: undefined,
     copyRecord: undefined,
     tagged: undefined,
     error: undefined,
@@ -190,6 +192,7 @@ const makePassStyleOf = passStyleHelpers => {
 
 export const passStyleOf = makePassStyleOf([
   CopyArrayHelper,
+  CopyBytesHelper,
   CopyRecordHelper,
   TaggedHelper,
   ErrorHelper,

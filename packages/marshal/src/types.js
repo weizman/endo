@@ -191,3 +191,11 @@ export {};
  * weird, as some taggeds will be considered keys and other taggeds will be
  * considered non-keys.
  */
+/** @typedef {import('@endo/pass-style').Checker} Checker */
+/** @typedef {import('@endo/pass-style').PassStyle} PassStyle */
+/** @typedef {import('@endo/pass-style').Passable} Passable */
+/** @typedef {import('@endo/pass-style').Remotable} Remotable */
+/** @template T @typedef {import('@endo/pass-style').CopyArray<T>} CopyArray */
+/** @typedef {import('@endo/pass-style').CopyBytes} CopyBytes */
+/** @template T @typedef {import('@endo/pass-style').CopyRecord<T>} CopyRecord */
+/** @typedef {import('@endo/pass-style').InterfaceSpec} InterfaceSpec */

@@ -7,6 +7,7 @@ export {};
 /** @typedef {import('@endo/marshal').CopyTagged} CopyTagged */
 /** @template T @typedef {import('@endo/marshal').CopyRecord<T>} CopyRecord */
 /** @template T @typedef {import('@endo/marshal').CopyArray<T>} CopyArray */
+/** @typedef {import('@endo/marshal').CopyBytes} CopyBytes */
 /** @typedef {import('@endo/marshal').Checker} Checker */
 /** @typedef {import('@endo/marshal').RankCompare} RankCompare */
 /** @typedef {import('@endo/marshal').RankCover} RankCover */
@@ -15,7 +16,7 @@ export {};
  * @typedef {Passable} Key
  *
  * Keys are Passable arbitrarily-nested pass-by-copy containers
- * (CopyArray, CopyRecord, CopySet, CopyBag, CopyMap) in which every
+ * (CopyArray, CopyBytes, CopyRecord, CopySet, CopyBag, CopyMap) in which every
  * non-container leaf is either a Passable primitive value or a Remotable (a
  * remotely-accessible object or presence for a remote object), or such leaves
  * in isolation with no container.
@@ -54,7 +55,7 @@ export {};
  * @typedef {Passable} Pattern
  *
  * Patterns are Passable arbitrarily-nested pass-by-copy containers
- * (CopyArray, CopyRecord, CopySet, CopyBag, CopyMap) in which every
+ * (CopyArray, CopyBytes, CopyRecord, CopySet, CopyBag, CopyMap) in which every
  * non-container leaf is either a Key or a Matcher, or such leaves in isolation
  * with no container.
  *
@@ -320,6 +321,9 @@ export {};
  * @property {(limits?: Limits) => Matcher} array
  * Matches any CopyArray, subject to limits.
  *
+ * @property {(limits?: Limits) => Matcher} bytes
+ * Matches any CopyBytes, subject to limits.
+ *
  * @property {(limits?: Limits) => Matcher} set
  * Matches any CopySet, subject to limits.
  *
@@ -379,6 +383,10 @@ export {};
  *
  * @property {(subPatt?: Pattern, limits?: Limits) => Matcher} arrayOf
  * Matches any CopyArray whose elements are all matched by `subPatt`
+ * if defined, subject to limits.
+ *
+ * @property {(bytePatt?: Pattern, limits?: Limits) => Matcher} bytesOf
+ * Matches any CopyBytes whose bytes are all matched by `bytePatt`
  * if defined, subject to limits.
  *
  * @property {(keyPatt?: Pattern,

@@ -328,6 +328,9 @@ const makePatternKit = () => {
         // patterns
         return patt.every(checkIt);
       }
+      case 'copyBytes': {
+        return true;
+      }
       case 'copyMap': {
         // A copyMap's keys are keys and therefore already known to be
         // patterns.
@@ -403,6 +406,7 @@ const makePatternKit = () => {
       case 'bigint':
       case 'string':
       case 'symbol':
+      case 'copyBytes':
       case 'copySet':
       case 'copyBag':
       case 'remotable': {
@@ -562,6 +566,10 @@ const makePatternKit = () => {
         //   rankCovers.map(([_left, right]) => right),
         // ]);
         break;
+      }
+      case 'copyBytes': {
+        // TODO implement
+        throw Fail`getCover of copyBytes not yet implemented`;
       }
       case 'copyRecord': {
         // XXX this doesn't get along with the world of cover === pair of

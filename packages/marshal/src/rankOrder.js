@@ -211,6 +211,26 @@ export const makeComparatorKit = (compareRemotables = (_x, _y) => 0) => {
         // If array X is a prefix of array Y, then X has an earlier rank than Y.
         return comparator(left.length, right.length);
       }
+      case 'copyBytes': {
+        const leftArray = new Uint8Array(left.slice());
+        const rightArray = new Uint8Array(right.slice());
+        const byteLen = Math.min(left.byteLength, right.byteLength);
+        for (let i = 0; i < byteLen; i += 1) {
+          const leftByte = leftArray[i];
+          const rightByte = rightArray[i];
+          if (leftByte < rightByte) {
+            return -1;
+          }
+          if (leftByte > rightByte) {
+            return 1;
+          }
+        }
+        // If all corresponding bytes are the same,
+        // then according to their lengths.
+        // Thus, if the data of CopyBytes X is a prefix of
+        // the data of CopyBytes Y, then X is smaller than Y.
+        return comparator(left.byteLength, right.byteLength);
+      }
       case 'tagged': {
         // Lexicographic by `[Symbol.toStringTag]` then `.payload`.
         const labelComp = comparator(getTag(left), getTag(right));
