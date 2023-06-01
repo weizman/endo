@@ -1,6 +1,14 @@
 /// <reference types="ses"/>
 
-import { Far, getTag, makeTagged, passStyleOf } from '@endo/pass-style';
+import {
+  Far,
+  getTag,
+  makeTagged,
+  mapIterable,
+  passStyleOf,
+} from '@endo/pass-style';
+
+/** @typedef {import('@endo/pass-style').Passable} Passable */
 
 const { fromEntries } = Object;
 const { ownKeys } = Reflect;
@@ -9,9 +17,9 @@ const { quote: q, details: X } = assert;
 const makeSubgraphBuilder = () => {
   const ident = val => val;
 
-  /** @type {Builder<any,any>} */
+  /** @type {Builder<Passable,Passable>} */
   const subgraphBuilder = Far('SubgraphBuilder', {
-    buildRoot: ident,
+    buildRoot: buildTopFn => buildTopFn(),
 
     buildUndefined: () => undefined,
     buildNull: () => null,
@@ -20,9 +28,15 @@ const makeSubgraphBuilder = () => {
     buildBigint: ident,
     buildString: ident,
     buildSymbol: ident,
-    buildRecord: builtEntries => harden(fromEntries(builtEntries)),
-    buildArray: ident,
-    buildTagged: (tagName, builtPayload) => makeTagged(tagName, builtPayload),
+    buildRecord: (names, buildValuesIter) => {
+      const builtValues = [...buildValuesIter];
+      assert(names.length === builtValues.length);
+      const builtEntries = names.map((name, i) => [name, builtValues[i]]);
+      return harden(fromEntries(builtEntries));
+    },
+    buildArray: (_count, buildElementsIter) => harden([...buildElementsIter]),
+    buildTagged: (tagName, buildPayloadFn) =>
+      makeTagged(tagName, buildPayloadFn()),
 
     buildError: ident,
     buildRemotable: ident,
@@ -33,7 +47,12 @@ const makeSubgraphBuilder = () => {
 harden(makeSubgraphBuilder);
 
 const makeSubgraphRecognizer = () => {
-  const subgraphRecognizer = (passable, builder) => {
+  /**
+   * @param {Passable} passable
+   * @param {Builder<Passable,Passable>} builder
+   * @returns {Passable}
+   */
+  const recognizeNode = (passable, builder) => {
     // First we handle all primitives. Some can be represented directly as
     // JSON, and some must be encoded into smallcaps strings.
     const passStyle = passStyleOf(passable);
@@ -60,26 +79,21 @@ const makeSubgraphRecognizer = () => {
         return builder.buildSymbol(passable);
       }
       case 'copyRecord': {
-        // copyRecord allows only string keys so this will
-        // work.
-        const names = ownKeys(passable).sort();
-        return builder.buildRecord(
-          names.map(name => [
-            name,
-            subgraphRecognizer(passable[name], builder),
-          ]),
+        const names = /** @type {string[]} */ (ownKeys(passable)).sort();
+        const buildValuesIter = mapIterable(names, name =>
+          recognizeNode(passable[name], builder),
         );
+        return builder.buildRecord(names, buildValuesIter);
       }
       case 'copyArray': {
-        return builder.buildArray(
-          passable.map(el => subgraphRecognizer(el, builder)),
+        const buildElementsIter = mapIterable(passable, el =>
+          recognizeNode(el, builder),
         );
+        return builder.buildArray(passable.length, buildElementsIter);
       }
       case 'tagged': {
-        return builder.buildTagged(
-          getTag(passable),
-          subgraphRecognizer(passable.payload, builder),
-        );
+        const buildPayloadFn = () => recognizeNode(passable.payload, builder);
+        return builder.buildTagged(getTag(passable), buildPayloadFn);
       }
       case 'remotable': {
         return builder.buildRemotable(passable);
@@ -91,14 +105,21 @@ const makeSubgraphRecognizer = () => {
         return builder.buildError(passable);
       }
       default: {
-        assert.fail(
+        throw assert.fail(
           X`internal: Unrecognized passStyle ${q(passStyle)}`,
           TypeError,
         );
       }
     }
   };
-  return subgraphRecognizer;
+  /**
+   * @param {Passable} passable
+   * @param {Builder<Passable,Passable>} builder
+   * @returns {Passable}
+   */
+  const recognizeSubgraph = (passable, builder) =>
+    builder.buildRoot(() => recognizeNode(passable, builder));
+  return harden(recognizeSubgraph);
 };
 harden(makeSubgraphRecognizer);
 

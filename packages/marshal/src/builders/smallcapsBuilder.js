@@ -5,6 +5,7 @@ import {
   Far,
   getErrorConstructor,
   hasOwnPropertyOf,
+  mapIterable,
   nameForPassableSymbol,
   passableSymbolForName,
 } from '@endo/pass-style';
@@ -15,7 +16,7 @@ import {
 
 /** @typedef {import('../encodeToSmallcaps.js').SmallcapsEncoding} SmallcapsEncoding */
 
-const { is, fromEntries, entries } = Object;
+const { is, fromEntries } = Object;
 const { isArray } = Array;
 const { ownKeys } = Reflect;
 const { quote: q, details: X, Fail } = assert;
@@ -23,7 +24,7 @@ const { quote: q, details: X, Fail } = assert;
 const makeSmallcapsBuilder = () => {
   /** @type {Builder<SmallcapsEncoding,SmallcapsEncoding>} */
   const smallcapsBuilder = Far('SmallcapsBuilder', {
-    buildRoot: node => node,
+    buildRoot: buildTopFn => buildTopFn(),
 
     buildUndefined: () => '#undefined',
     buildNull: () => null,
@@ -50,19 +51,17 @@ const makeSmallcapsBuilder = () => {
       const name = /** @type {string} */ (nameForPassableSymbol(sym));
       return `%${name}`;
     },
-    buildRecord: builtEntries =>
+    buildRecord: (names, buildValuesIter) => {
+      const builtValues = [...buildValuesIter];
+      assert(names.length === builtValues.length);
       // TODO Should be fromUniqueEntries, but utils needs to be
       // relocated first.
-      fromEntries(
-        builtEntries.map(([name, builtValue]) => [
-          buildString(name),
-          builtValue,
-        ]),
-      ),
-    buildArray: builtElements => builtElements,
-    buildTagged: (tagName, builtPayload) => ({
+      return fromEntries(names.map((name, i) => [name, builtValues[i]]));
+    },
+    buildArray: (_count, buildElementsIter) => harden([...buildElementsIter]),
+    buildTagged: (tagName, buildPayloadFn) => ({
       '#tag': buildString(tagName),
-      payload: builtPayload,
+      payload: buildPayloadFn(),
     }),
 
     // TODO slots and options and all that. Also errorId
@@ -96,7 +95,12 @@ const recognizeString = str => {
 };
 
 const makeSmallcapsRecognizer = () => {
-  const smallcapsRecognizer = (encoding, builder) => {
+  /**
+   * @param {SmallcapsEncoding} encoding
+   * @param {Builder<SmallcapsEncoding, SmallcapsEncoding>} builder
+   * @returns {SmallcapsEncoding}
+   */
+  const recognizeNode = (encoding, builder) => {
     switch (typeof encoding) {
       case 'boolean': {
         return builder.buildBoolean(encoding);
@@ -115,9 +119,9 @@ const makeSmallcapsRecognizer = () => {
             return builder.buildString(encoding.slice(1));
           }
           case '%': {
-            return builder.buildSymbol(
-              passableSymbolForName(encoding.slice(1)),
-            );
+            const sym = passableSymbolForName(encoding.slice(1));
+            assert(sym !== undefined);
+            return builder.buildSymbol(sym);
           }
           case '#': {
             switch (encoding) {
@@ -134,7 +138,10 @@ const makeSmallcapsRecognizer = () => {
                 return builder.buildNumber(-Infinity);
               }
               default: {
-                assert.fail(X`unknown constant "${q(encoding)}"`, TypeError);
+                throw assert.fail(
+                  X`unknown constant "${q(encoding)}"`,
+                  TypeError,
+                );
               }
             }
           }
@@ -163,20 +170,18 @@ const makeSmallcapsRecognizer = () => {
         }
 
         if (isArray(encoding)) {
-          const builtElements = encoding.map(val =>
-            smallcapsRecognizer(val, builder),
+          const buildElementsIter = mapIterable(encoding, val =>
+            recognizeNode(val, builder),
           );
-          return builder.buildArray(builtElements);
+          return builder.buildArray(encoding.length, buildElementsIter);
         }
 
         if (hasOwnPropertyOf(encoding, '#tag')) {
           const { '#tag': tag, payload, ...rest } = encoding;
           ownKeys(rest).length === 0 ||
             Fail`#tag record unexpected properties: ${q(ownKeys(rest))}`;
-          return builder.buildTagged(
-            recognizeString(tag),
-            smallcapsRecognizer(payload, builder),
-          );
+          const buildPayloadFn = () => recognizeNode(payload, builder);
+          return builder.buildTagged(recognizeString(tag), buildPayloadFn);
         }
 
         if (hasOwnPropertyOf(encoding, '#error')) {
@@ -190,21 +195,25 @@ const makeSmallcapsRecognizer = () => {
           return builder.buildError(error);
         }
 
-        const buildEntry = ([encodedName, encodedVal]) => {
+        const encodedNames = /** @type {string[]} */ (ownKeys(encoding)).sort();
+        for (const encodedName of encodedNames) {
           typeof encodedName === 'string' ||
             Fail`Property name ${q(
               encodedName,
             )} of ${encoding} must be a string`;
           !encodedName.startsWith('#') ||
             Fail`Unrecognized record type ${q(encodedName)}: ${encoding}`;
-          const name = recognizeString(encodedName);
-          return [name, smallcapsRecognizer(encodedVal, builder)];
-        };
-        const builtEntries = entries(encoding).map(buildEntry);
-        return builder.buildRecord(builtEntries);
+        }
+        const buildValuesIter = mapIterable(encodedNames, encodedName =>
+          recognizeNode(encoding[encodedName], builder),
+        );
+        return builder.buildRecord(
+          encodedNames.map(recognizeString),
+          buildValuesIter,
+        );
       }
       default: {
-        assert.fail(
+        throw assert.fail(
           X`internal: unrecognized JSON typeof ${q(
             typeof encoding,
           )}: ${encoding}`,
@@ -213,7 +222,14 @@ const makeSmallcapsRecognizer = () => {
       }
     }
   };
-  return smallcapsRecognizer;
+  /**
+   * @param {SmallcapsEncoding} encoding
+   * @param {Builder<SmallcapsEncoding, SmallcapsEncoding>} builder
+   * @returns {SmallcapsEncoding}
+   */
+  const recognizeSmallcaps = (encoding, builder) =>
+    builder.buildRoot(() => recognizeNode(encoding, builder));
+  return harden(recognizeSmallcaps);
 };
 harden(makeSmallcapsRecognizer);
 

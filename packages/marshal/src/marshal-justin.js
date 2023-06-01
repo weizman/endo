@@ -30,7 +30,7 @@ const { quote: q, details: X, Fail } = assert;
  *
  * @returns {Indenter}
  */
-const makeYesIndenter = () => {
+export const makeYesIndenter = () => {
   const strings = [];
   let level = 0;
   let needSpace = false;
@@ -85,7 +85,7 @@ const badPairPattern = /^(?:\w\w|<<|>>|\+\+|--|<!|->)$/;
  *
  * @returns {Indenter}
  */
-const makeNoIndenter = () => {
+export const makeNoIndenter = () => {
   /** @type {string[]} */
   const strings = [];
   return harden({

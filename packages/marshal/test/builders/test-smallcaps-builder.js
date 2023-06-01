@@ -3,7 +3,7 @@ import { test } from '../prepare-test-env-ava.js';
 import * as sc from '../../src/builders/smallcapsBuilder.js';
 import * as js from '../../src/builders/subgraphBuilder.js';
 import { roundTripPairs } from '../test-marshal-capdata.js';
-import { makeSmallcapsTestMarshal } from '../test-marshal-smallcaps.js';
+import { makeSmallcapsTestMarshal } from '../test-marshal-smallcaps-builder.js';
 
 const { isFrozen } = Object;
 
