@@ -31,6 +31,7 @@
     "@endo/daemon": "^0.2.2",
     "@endo/eventual-send": "^0.17.2",
     "@endo/far": "^0.2.18",
+    "@endo/import-bundle": "^0.3.4",
     "@endo/lockdown": "^0.1.28",
     "@endo/promise-kit": "^0.2.56",
     "@endo/stream-node": "^0.2.26",
