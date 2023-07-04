@@ -5,7 +5,8 @@ import { objectMap } from '@endo/patterns';
 
 import { defendPrototype, defendPrototypeKit } from './exo-tools.js';
 
-const { create, seal, freeze, defineProperty } = Object;
+const { Fail, quote: q } = assert;
+const { create, seal, freeze, defineProperty, entries, values } = Object;
 
 const { getEnvironmentOption } = makeEnvironmentCaptor(globalThis);
 const DEBUG = getEnvironmentOption('DEBUG', '');
@@ -63,10 +64,23 @@ export const initEmpty = () => emptyRecord;
  */
 
 /**
+ * @callback Revoker
+ * @param {object} exo
+ * @returns {boolean}
+ */
+
+/**
+ * @callback GetRevoker
+ * @param {Revoker} revoke
+ * @returns {void}
+ */
+
+/**
  * @template C
  * @typedef {object} FarClassOptions
  * @property {(context: C) => void} [finish]
  * @property {StateShape} [stateShape]
+ * @property {GetRevoker} [getRevoker]
  */
 
 /**
@@ -79,9 +93,15 @@ export const initEmpty = () => emptyRecord;
  * @param {FarClassOptions<ClassContext<ReturnType<I>, M>>} [options]
  * @returns {(...args: Parameters<I>) => (M & import('@endo/eventual-send').RemotableBrand<{}, M>)}
  */
-export const defineExoClass = (tag, interfaceGuard, init, methods, options) => {
+export const defineExoClass = (
+  tag,
+  interfaceGuard,
+  init,
+  methods,
+  options = {},
+) => {
   harden(methods);
-  const { finish = undefined } = options || {};
+  const { finish = undefined, getRevoker = undefined } = options;
   /** @type {WeakMap<M,ClassContext<ReturnType<I>, M>>} */
   const contextMap = new WeakMap();
   const proto = defendPrototype(
@@ -113,6 +133,13 @@ export const defineExoClass = (tag, interfaceGuard, init, methods, options) => {
       self
     );
   };
+
+  if (getRevoker) {
+    const revoke = self => contextMap.delete(self);
+    harden(revoke);
+    getRevoker(revoke);
+  }
+
   return harden(makeInstance);
 };
 harden(defineExoClass);
@@ -132,14 +159,14 @@ export const defineExoClassKit = (
   interfaceGuardKit,
   init,
   methodsKit,
-  options,
+  options = {},
 ) => {
   harden(methodsKit);
-  const { finish = undefined } = options || {};
+  const { finish = undefined, getRevoker = undefined } = options;
   const contextMapKit = objectMap(methodsKit, () => new WeakMap());
   const getContextKit = objectMap(
-    methodsKit,
-    (_v, name) => facet => contextMapKit[name].get(facet),
+    contextMapKit,
+    contextMap => facet => contextMap.get(facet),
   );
   const prototypeKit = defendPrototypeKit(
     tag,
@@ -172,6 +199,34 @@ export const defineExoClassKit = (
     }
     return context.facets;
   };
+
+  if (getRevoker) {
+    const revoke = aFacet => {
+      let seenTrue = false;
+      let facets;
+      for (const contextMap of values(contextMapKit)) {
+        if (contextMap.has(aFacet)) {
+          seenTrue = true;
+          facets = contextMap.get(aFacet).facets;
+          break;
+        }
+      }
+      if (!seenTrue) {
+        return false;
+      }
+      // eslint-disable-next-line no-use-before-define
+      for (const [facetName, facet] of entries(facets)) {
+        const seen = contextMapKit[facetName].delete(facet);
+        if (seen === false) {
+          Fail`internal: inconsistent facet revocation ${q(facetName)}`;
+        }
+      }
+      return seenTrue;
+    };
+    harden(revoke);
+    getRevoker(revoke);
+  }
+
   return harden(makeInstanceKit);
 };
 harden(defineExoClassKit);
