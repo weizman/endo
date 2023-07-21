@@ -2,6 +2,7 @@
 bundles
 dist
 fixtures
+output
 test262
 
 *.html
