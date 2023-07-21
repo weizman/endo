@@ -2,10 +2,10 @@ import { test } from './prepare-test-env-ava.js';
 
 import { E } from './get-hp.js';
 
-/** @template T @typedef {import('../src/index').ERef<T>} ERef */
+/** @template T @typedef {import('../src/exports').ERef<T>} ERef */
 /**
  * @template Primary
- * @template [Local=import('../src/index').DataOnly<Primary>]
+ * @template [Local=import('../src/exports').DataOnly<Primary>]
  * @typedef {import('@endo/eventual-send').FarRef<Primary, Local>} FarRef
  */
 
